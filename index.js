@@ -3,112 +3,111 @@ import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
 import Message from "./model/message.js";
-import "dotenv/config";
 import Chatroom from "./model/chat-session.js";
 
+dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST", "DELETE"],
-  },
+  cors: { origin: "http://localhost:3000", methods: ["GET", "POST"] },
 });
+
+const EVENTS = {
+  SEND_MESSAGE: "send_message",
+  JOIN_ROOM: "join_room",
+  RECEIVE_MESSAGE: "receive_message",
+};
 
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
+// MongoDB Connection
 mongoose
   .connect(process.env.DATABASE_URL)
   .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("Error connecting to MongoDB:", err));
+  .catch((err) => console.error("Database connection error:", err));
 
-// Fetch messages for a room
-async function fetchMessages(roomName) {
+// Utility functions
+/* const fetchMessages = async (chatRoomId) => {
+  return Chatroom.findById(chatRoomId).populate("messages").exec();
+}; */
+
+async function fetchMessages(chatRoomId) {
   try {
-    return await Message.find({ roomName }).sort({ createdAt: 1 });
+      const chatroom = await Chatroom.findById(chatRoomId).populate({
+          path: "messages",
+          options: { sort: { createdAt: 1 } }, // Sort messages by creation time
+      });
+      return chatroom ? chatroom.messages : [];
   } catch (err) {
-    console.error("Error fetching messages:", err);
-    throw err;
+      console.error("Error fetching messages:", err);
+      throw err;
   }
 }
 
-// Save a message to the database
-async function saveMessage(roomName, sender, content) {
-  try {
-    const message = new Message({ roomName, sender, content });
-    await message.save();
 
-    // Add message to the chatroom's messages array
-    await Chatroom.updateOne(
-      { application: roomName },
-      { $push: { messages: message._id } }
-    );
+const saveMessage = async (chatRoomId, sender, content) => {
+  const message = new Message({ chatRoomId, sender, content });
+  await message.save();
+  await Chatroom.updateOne({ _id: chatRoomId }, { $push: { messages: message._id } });
+  return message;
+};
 
-    return message;
-  } catch (err) {
-    console.error("Error saving message:", err);
-    throw err;
-  }
-}
+// API Routes
 
-// Create a new chatroom
 app.post("/create-chatroom", async (req, res) => {
   const { application } = req.body;
+  console.log(application);
   try {
-    const roomExists = await Chatroom.findOne({ application });
-    if (roomExists) {
-      return res.status(400).json({ error: "Room already exists" });
+    const chatroomExists = await Chatroom.findOne({ application });
+  if (chatroomExists) {
+    res.status(400).json({ error: "Chatroom already exists" });
+    } else {
+      const chatroom = new Chatroom({ application });
+      await chatroom.save();
+      res.json({ id: chatroom._id });
     }
-    const room = await Chatroom.create({ application });
-    res.status(201).json({ id: room._id });
-  } catch (err) {
-    console.error("Error creating chatroom:", err);
+  } catch (error) {
+    console.error("Error creating chatroom:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// Fetch messages for a room
-app.get("/messages/:roomName", async (req, res) => {
-  const roomName = req.params.roomName;
+app.get("/messages/:chatRoomId", async (req, res) => {
   try {
-    const messages = await fetchMessages(roomName);
-    res.status(200).json(messages);
+    const messages = await fetchMessages(req.params.chatRoomId);
+    res.json(messages);
   } catch (error) {
     console.error("Error fetching messages:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// Socket.IO connection
+// Socket.IO Handlers
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+  console.log(`User connected: ${socket.id}`);
 
-  socket.on("join_room", async (roomName) => {
-    socket.join(roomName);
-    console.log(`User ${socket.id} joined room ${roomName}`);
-
-    const messages = await fetchMessages(roomName);
-    socket.emit("room_messages", messages);
+  socket.on(EVENTS.JOIN_ROOM, (chatRoomId) => {
+    socket.join(chatRoomId);
+    console.log(`User joined room: ${chatRoomId}`);
   });
 
-  socket.on("send_message", async ({ roomName, sender, content }) => {
+  socket.on(EVENTS.SEND_MESSAGE, async ({ chatRoomId, sender, content }) => {
     try {
-      const newMessage = await saveMessage(roomName, sender, content);
-      io.to(roomName).emit("receive_message", newMessage);
-    } catch (err) {
-      console.error("Error sending message:", err);
+      const message = await saveMessage(chatRoomId, sender, content);
+      io.to(chatRoomId).emit(EVENTS.RECEIVE_MESSAGE, message);
+    } catch (error) {
+      console.error("Error sending message:", error);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("A user disconnected:", socket.id);
+    console.log(`User disconnected: ${socket.id}`);
   });
 });
 
-// Start the server
 server.listen(8000, () => {
-  console.log("Server is running on port 8000");
+  console.log("Server running on port 8000");
 });

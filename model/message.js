@@ -1,8 +1,9 @@
 import mongoose, { Schema } from "mongoose";
 
 const messageSchema = new Schema({
-  roomName : {
-    type : String,
+  chatRoomId : {
+    type : mongoose.Schema.Types.ObjectId,
+    ref : "ChatRoom",
     required : true
   },
   sender : {
