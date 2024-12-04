@@ -56,6 +56,9 @@ const saveMessage = async (chatRoomId, sender, content) => {
 };
 
 // API Routes
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/index.html");
+}); 
 
 app.post("/create-chatroom", async (req, res) => {
   const { application } = req.body;
