@@ -30,10 +30,6 @@ mongoose
   .catch((err) => console.error("Database connection error:", err));
 
 // Utility functions
-/* const fetchMessages = async (chatRoomId) => {
-  return Chatroom.findById(chatRoomId).populate("messages").exec();
-}; */
-
 async function fetchMessages(chatRoomId) {
   try {
       const chatroom = await Chatroom.findById(chatRoomId).populate({
@@ -47,7 +43,6 @@ async function fetchMessages(chatRoomId) {
   }
 }
 
-
 const saveMessage = async (chatRoomId, sender, content) => {
   const message = new Message({ chatRoomId, sender, content });
   await message.save();
@@ -57,7 +52,7 @@ const saveMessage = async (chatRoomId, sender, content) => {
 
 // API Routes
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
+  res.send("<h1>Hello World</h1>");
 }); 
 
 app.post("/create-chatroom", async (req, res) => {
@@ -111,6 +106,7 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(8000, () => {
-  console.log("Server running on port 8000");
+const PORT = process.env.PORT;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
