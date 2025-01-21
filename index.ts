@@ -48,8 +48,25 @@ io.on("connection", (socket: Socket) => {
         console.log("user disconnected");
     });
 
-    socket.on("send-message", (msg) => {
-        io.emit("send-message", msg);
+    socket.on("join-room", async (roomId, userId) => {
+        socket.join(roomId);
+        console.log(`User ${userId} joined room ${roomId}`);
+    });
+
+    socket.on("leave-room", async (roomId, userId) => {
+        socket.leave(roomId);
+        console.log(`User ${userId} left room ${roomId}`);
+    });
+
+    socket.on("send-message", async (roomId, sender, messageContent) => {
+        const message = await db.message.create({
+            data: {
+                content: messageContent,
+                sender: sender,
+                chatRoomId: roomId,
+            },
+        });
+        io.to(roomId).emit("receive-message", message);
     });
 });
 
