@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ChatSession {
+  id             Int          @id @default(autoincrement())
+  roomId         String       @unique
+  user_id        Int
+  company_id     Int
+  application_id Int
+  applications   applications @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  companies      companies    @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  users          users        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}
+
+model ChatRoom {
+  id       String    @id
+  messages Message[]
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  content    String
+  sender     Role
+  chatRoomId String
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id])
+}
+
+model applications {
+  id          Int           @id @default(autoincrement())
+  created_at  DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?     @db.Timestamptz(6)
+  deleted_at  DateTime?     @db.Timestamptz(6)
+  user_id     Int
+  coverletter String?
+  job_id      Int
+  status      String?       @default("pending")
+  applied_at  DateTime?     @db.Timestamptz(6)
+  ChatSession ChatSession[]
+  jobs        jobs          @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_jobs_applications")
+  users       users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_users_applications")
+
+  @@index([deleted_at], map: "idx_applications_deleted_at")
+}
+
+model comments {
+  id         Int       @id @default(autoincrement())
+  created_at DateTime? @default(now())
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  content    String
+  user_id    Int
+  post_id    Int
+  posts      posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_posts_comments")
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_users_comments")
+
+  @@index([deleted_at], map: "idx_comments_deleted_at")
+}
+
+model companies {
+  id          Int           @id @default(autoincrement())
+  created_at  DateTime?     @default(now())
+  updated_at  DateTime?     @db.Timestamptz(6)
+  deleted_at  DateTime?     @db.Timestamptz(6)
+  name        String
+  logo        String?
+  email       String        @unique
+  password    String
+  address     String?
+  ChatSession ChatSession[]
+  jobs        jobs[]
+
+  @@index([deleted_at], map: "idx_companies_deleted_at")
+}
+
+model educations {
+  id         Int       @id @default(autoincrement())
+  created_at DateTime? @default(now())
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  school     String
+  degree     String
+  field      String
+  user_id    Int
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_users_education")
+
+  @@index([deleted_at], map: "idx_educations_deleted_at")
+}
+
+model experience_skills {
+  skill_id      Int
+  experience_id Int
+  experiences   experiences @relation(fields: [experience_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_experience_skills_experience")
+  skills        skills      @relation(fields: [skill_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_experience_skills_skill")
+
+  @@id([skill_id, experience_id])
+}
+
+model experiences {
+  id                Int                 @id @default(autoincrement())
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @db.Timestamptz(6)
+  deleted_at        DateTime?           @db.Timestamptz(6)
+  title             String
+  company           String
+  location          String
+  description       String
+  user_id           Int
+  experience_skills experience_skills[]
+  users             users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_users_experience")
+
+  @@index([deleted_at], map: "idx_experiences_deleted_at")
+}
+
+model job_skills {
+  skill_id Int
+  job_id   Int
+  jobs     jobs   @relation(fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_job_skills_job")
+  skills   skills @relation(fields: [skill_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_job_skills_skill")
+
+  @@id([skill_id, job_id])
+}
+
+model jobs {
+  id              Int            @id @default(autoincrement())
+  created_at      DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?      @db.Timestamptz(6)
+  deleted_at      DateTime?      @db.Timestamptz(6)
+  title           String
+  department      String
+  description     String
+  location        String
+  employment_type String
+  requirements    String
+  benefits        String
+  expectations    String
+  additional_info String?
+  salary          String
+  company_id      Int
+  applications    applications[]
+  job_skills      job_skills[]
+  companies       companies      @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_companies_jobs")
+
+  @@index([deleted_at], map: "idx_jobs_deleted_at")
+}
+
+model likes {
+  id         Int       @id @default(autoincrement())
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  user_id    Int
+  post_id    Int
+  posts      posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_posts_likes")
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_users_likes")
+
+  @@index([deleted_at], map: "idx_likes_deleted_at")
+}
+
+model posts {
+  id         Int        @id @default(autoincrement())
+  created_at DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime?  @db.Timestamptz(6)
+  deleted_at DateTime?  @db.Timestamptz(6)
+  title      String
+  content    String
+  user_id    Int
+  comments   comments[]
+  likes      likes[]
+  users      users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_users_posts")
+
+  @@index([deleted_at], map: "idx_posts_deleted_at")
+}
+
+model resume {
+  id      Int    @id @default(autoincrement())
+  user_id Int    @unique
+  url     String
+  users   users  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model skills {
+  id                Int                 @id @default(autoincrement())
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @db.Timestamptz(6)
+  deleted_at        DateTime?           @db.Timestamptz(6)
+  name              String              @unique(map: "uni_skills_name")
+  experience_skills experience_skills[]
+  job_skills        job_skills[]
+  user_skills       user_skills[]
+
+  @@index([deleted_at], map: "idx_skills_deleted_at")
+}
+
+model user_follows {
+  id                                    Int       @id @default(autoincrement())
+  created_at                            DateTime? @db.Timestamptz(6)
+  updated_at                            DateTime? @db.Timestamptz(6)
+  deleted_at                            DateTime? @db.Timestamptz(6)
+  follower_id                           Int
+  followed_id                           Int
+  users_user_follows_followed_idTousers users     @relation("user_follows_followed_idTousers", fields: [followed_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_follows_followed")
+  users_user_follows_follower_idTousers users     @relation("user_follows_follower_idTousers", fields: [follower_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_follows_follower")
+
+  @@index([deleted_at], map: "idx_user_follows_deleted_at")
+}
+
+model user_skills {
+  skill_id Int
+  user_id  Int
+  skills   skills @relation(fields: [skill_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_skills_skill")
+  users    users  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_skills_user")
+
+  @@id([skill_id, user_id])
+}
+
+model users {
+  id                                           Int            @id @default(autoincrement())
+  created_at                                   DateTime?      @default(now())
+  updated_at                                   DateTime?      @db.Timestamptz(6)
+  deleted_at                                   DateTime?      @db.Timestamptz(6)
+  name                                         String
+  email                                        String         @unique(map: "uni_users_email")
+  password                                     String
+  logo                                         String         @default("https://utfs.io/f/8d8DWWhM1OVpXVyhoaHGLFeg8CmislIU7pto5NEwYBjc1ydW")
+  current_ctc                                  String?
+  expected_ctc                                 String?
+  notice_period                                String?
+  skills                                       String[]       @default([])
+  location                                     String?
+  phone                                        String?
+  link                                         String?
+  ChatSession                                  ChatSession[]
+  applications                                 applications[]
+  comments                                     comments[]
+  educations                                   educations[]
+  experiences                                  experiences[]
+  likes                                        likes[]
+  posts                                        posts[]
+  resume                                       resume?
+  user_follows_user_follows_followed_idTousers user_follows[] @relation("user_follows_followed_idTousers")
+  user_follows_user_follows_follower_idTousers user_follows[] @relation("user_follows_follower_idTousers")
+  user_skills                                  user_skills[]
+
+  @@index([deleted_at], map: "idx_users_deleted_at")
+}
+
+enum Role {
+  USER
+  COMPANY
+}
