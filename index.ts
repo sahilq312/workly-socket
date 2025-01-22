@@ -2,10 +2,14 @@ import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
 import { db } from "./lib/db";
+import cors from "cors";
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+app.use(express.json());    
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 app.get("/", (req, res) => {
     res.send("Hello World");
