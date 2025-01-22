@@ -12,34 +12,31 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 app.get("/", (req, res) => {
-    res.send("Hello World");
+    res.send({message : "Hello World"});
 });
 
-app.post('/create-chatroom', async (req, res) => { 
+/* app.post('/create-chatroom', async (req, res) => { 
     try {
         const chatroom = await db.chatRoom.create({});
         res.send(chatroom);
     } catch (error) {
         res.send(error);
     }
-});
+}); */
 
 app.get('/chatrooms/:id', async (req, res) => { 
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) {
-        res.send("Chatroom id is required and must be a number");
-    }
+    const id = req.params.id as string;
     try {
-        const chatroom = await db.chatRoom.findUnique({
+        const chatRoom = await db.chatRoom.findUnique({
             where: {
                 id: id
             },
             select: {
-                id: true,
-                messages: true
+                applicationId: true,
+                messages: true,
             }
-        });
-        res.send(chatroom);
+        })
+        res.send({data : chatRoom});
     } catch (error) {
         res.send(error);
     }
